@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Font Resmi Mushaf Standar Indonesia - LPMQ Kementerian Agama RI */
+@font-face {
+  font-family: 'LPMQ Isep Misbah';
+  src: url('/fonts/lpmq-isepmisbah.woff2') format('woff2'),
+       url('/fonts/lpmq-isepmisbah.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+}
+
+/* Arabic typography styling with Mushaf Standar Indonesia font & generous spacing */
+.font-arabic {
+  font-family: 'LPMQ Isep Misbah', 'Amiri Quran', 'Scheherazade New', 'Amiri', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.9 !important;
+  word-spacing: 0.22em;
+  letter-spacing: 0.01em;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.font-arabic-center {
+  font-family: 'LPMQ Isep Misbah', 'Amiri Quran', 'Scheherazade New', 'Amiri', serif;
+  direction: rtl;
+  text-align: center;
+  line-height: 2.9 !important;
+  word-spacing: 0.22em;
+  letter-spacing: 0.01em;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Glassmorphism Card Style */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+.glass-card-emerald {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.95), rgba(4, 120, 87, 0.92));
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: white;
+}
+
+/* 3D Tactile Button & Card styles */
+.clay-card {
+  background: white;
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.08), 0 8px 10px -6px rgba(5, 150, 105, 0.04);
+  border: 1px solid rgba(209, 250, 229, 0.8);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clay-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 30px -10px rgba(5, 150, 105, 0.15), 0 10px 10px -5px rgba(5, 150, 105, 0.06);
+  border-color: rgba(110, 231, 183, 1);
+}
+
+/* Smooth custom scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #059669;
+}
+
+/* Compass animations */
+@keyframes pulse-subtle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.95; }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite ease-in-out;
+}

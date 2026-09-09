@@ -1,0 +1,36 @@
+package data
+
+import "quranku-backend/models"
+
+var JuzList = []models.JuzInfo{
+	{JuzNumber: 1, StartSurah: 1, StartAyah: 1, EndSurah: 2, EndAyah: 141, Name: "Al-Fatihah - Al-Baqarah"},
+	{JuzNumber: 2, StartSurah: 2, StartAyah: 142, EndSurah: 2, EndAyah: 252, Name: "Al-Baqarah 142-252"},
+	{JuzNumber: 3, StartSurah: 2, StartAyah: 253, EndSurah: 3, EndAyah: 92, Name: "Al-Baqarah 253 - Ali 'Imran 92"},
+	{JuzNumber: 4, StartSurah: 3, StartAyah: 93, EndSurah: 4, EndAyah: 23, Name: "Ali 'Imran 93 - An-Nisa' 23"},
+	{JuzNumber: 5, StartSurah: 4, StartAyah: 24, EndSurah: 4, EndAyah: 147, Name: "An-Nisa' 24-147"},
+	{JuzNumber: 6, StartSurah: 4, StartAyah: 148, EndSurah: 5, EndAyah: 81, Name: "An-Nisa' 148 - Al-Ma'idah 81"},
+	{JuzNumber: 7, StartSurah: 5, StartAyah: 82, EndSurah: 6, EndAyah: 110, Name: "Al-Ma'idah 82 - Al-An'am 110"},
+	{JuzNumber: 8, StartSurah: 6, StartAyah: 111, EndSurah: 7, EndAyah: 87, Name: "Al-An'am 111 - Al-A'raf 87"},
+	{JuzNumber: 9, StartSurah: 7, StartAyah: 88, EndSurah: 8, EndAyah: 40, Name: "Al-A'raf 88 - Al-Anfal 40"},
+	{JuzNumber: 10, StartSurah: 8, StartAyah: 41, EndSurah: 9, EndAyah: 92, Name: "Al-Anfal 41 - At-Taubah 92"},
+	{JuzNumber: 11, StartSurah: 9, StartAyah: 93, EndSurah: 11, EndAyah: 5, Name: "At-Taubah 93 - Hud 5"},
+	{JuzNumber: 12, StartSurah: 11, StartAyah: 6, EndSurah: 12, EndAyah: 52, Name: "Hud 6 - Yusuf 52"},
+	{JuzNumber: 13, StartSurah: 12, StartAyah: 53, EndSurah: 14, EndAyah: 52, Name: "Yusuf 53 - Ibrahim 52"},
+	{JuzNumber: 14, StartSurah: 15, StartAyah: 1, EndSurah: 16, EndAyah: 128, Name: "Al-Hijr 1 - An-Nahl 128"},
+	{JuzNumber: 15, StartSurah: 17, StartAyah: 1, EndSurah: 18, EndAyah: 74, Name: "Al-Isra' 1 - Al-Kahf 74"},
+	{JuzNumber: 16, StartSurah: 18, StartAyah: 75, EndSurah: 20, EndAyah: 135, Name: "Al-Kahf 75 - Taha 135"},
+	{JuzNumber: 17, StartSurah: 21, StartAyah: 1, EndSurah: 22, EndAyah: 78, Name: "Al-Anbiya' 1 - Al-Hajj 78"},
+	{JuzNumber: 18, StartSurah: 23, StartAyah: 1, EndSurah: 25, EndAyah: 20, Name: "Al-Mu'minun 1 - Al-Furqan 20"},
+	{JuzNumber: 19, StartSurah: 25, StartAyah: 21, EndSurah: 27, EndAyah: 55, Name: "Al-Furqan 21 - An-Naml 55"},
+	{JuzNumber: 20, StartSurah: 27, StartAyah: 56, EndSurah: 29, EndAyah: 45, Name: "An-Naml 56 - Al-'Ankabut 45"},
+	{JuzNumber: 21, StartSurah: 29, StartAyah: 46, EndSurah: 33, EndAyah: 30, Name: "Al-'Ankabut 46 - Al-Ahzab 30"},
+	{JuzNumber: 22, StartSurah: 33, StartAyah: 31, EndSurah: 36, EndAyah: 27, Name: "Al-Ahzab 31 - Yasin 27"},
+	{JuzNumber: 23, StartSurah: 36, StartAyah: 28, EndSurah: 39, EndAyah: 31, Name: "Yasin 28 - Az-Zumar 31"},
+	{JuzNumber: 24, StartSurah: 39, StartAyah: 32, EndSurah: 41, EndAyah: 46, Name: "Az-Zumar 32 - Fussilat 46"},
+	{JuzNumber: 25, StartSurah: 41, StartAyah: 47, EndSurah: 45, EndAyah: 37, Name: "Fussilat 47 - Al-Jasiyah 37"},
+	{JuzNumber: 26, StartSurah: 46, StartAyah: 1, EndSurah: 51, EndAyah: 30, Name: "Al-Ahqaf 1 - Az-Zariyat 30"},
+	{JuzNumber: 27, StartSurah: 51, StartAyah: 31, EndSurah: 57, EndAyah: 29, Name: "Az-Zariyat 31 - Al-Hadid 29"},
+	{JuzNumber: 28, StartSurah: 58, StartAyah: 1, EndSurah: 66, EndAyah: 12, Name: "Al-Mujadilah 1 - At-Tahrim 12"},
+	{JuzNumber: 29, StartSurah: 67, StartAyah: 1, EndSurah: 77, EndAyah: 50, Name: "Al-Mulk 1 - Al-Mursalat 50"},
+	{JuzNumber: 30, StartSurah: 78, StartAyah: 1, EndSurah: 114, EndAyah: 6, Name: "Juz 'Amma (An-Naba' - An-Nas)"},
+}
