@@ -14,8 +14,26 @@ import {
   Share2,
   FileText,
   X,
+  Coins,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+// Format numeric string into clean Indonesian Rupiah format with dots (e.g. "8.000.000")
+// Returns empty string if empty so user can freely backspace / erase without stuck 0
+const formatRupiah = (val: string | number): string => {
+  if (val === '' || val === null || val === undefined) return '';
+  const digits = val.toString().replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10);
+  return isNaN(num) ? '' : num.toLocaleString('id-ID');
+};
+
+// Extracts integer value from formatted string
+const parseRupiah = (val: string): number => {
+  if (!val) return 0;
+  const digits = val.replace(/\D/g, '');
+  return digits ? parseInt(digits, 10) : 0;
+};
 
 export const ZakatDonation: React.FC = () => {
   const { user } = useAuth();
@@ -23,13 +41,13 @@ export const ZakatDonation: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'calculator' | 'donate'>('calculator');
   const [calcType, setCalcType] = useState<'penghasilan' | 'maal' | 'fitrah'>('penghasilan');
 
-  // Calculator form states
-  const [income, setIncome] = useState<number>(8000000);
-  const [otherIncome, setOtherIncome] = useState<number>(0);
-  const [debt, setDebt] = useState<number>(1000000);
-  const [goldWeight, setGoldWeight] = useState<number>(85);
-  const [savings, setSavings] = useState<number>(50000000);
-  const [persons, setPersons] = useState<number>(4);
+  // Calculator form states as string to allow clean backspace and no stuck 0
+  const [incomeStr, setIncomeStr] = useState<string>('8.000.000');
+  const [otherIncomeStr, setOtherIncomeStr] = useState<string>('');
+  const [debtStr, setDebtStr] = useState<string>('1.000.000');
+  const [savingsStr, setSavingsStr] = useState<string>('50.000.000');
+  const [goldWeightStr, setGoldWeightStr] = useState<string>('85');
+  const [personsStr, setPersonsStr] = useState<string>('4');
   const [calcResult, setCalcResult] = useState<any>(null);
 
   // Donation form states
@@ -37,11 +55,25 @@ export const ZakatDonation: React.FC = () => {
   const [donorEmail, setDonorEmail] = useState<string>(user?.email || '');
   const [programTitle, setProgramTitle] = useState<string>('Sedekah Subuh Berkah');
   const [donationType, setDonationType] = useState<string>('sedekah');
-  const [customAmount, setCustomAmount] = useState<number>(50000);
+  const [customAmountStr, setCustomAmountStr] = useState<string>('50.000');
   const [paymentMethod, setPaymentMethod] = useState<string>('QRIS');
   const [notes, setNotes] = useState<string>('Semoga berkah & mendatangkan kelapangan rezeki');
   const [receipt, setReceipt] = useState<Donation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [donationError, setDonationError] = useState<string | null>(null);
+
+  // Helper to handle currency input change
+  const handleCurrencyInputChange = (
+    setter: React.Dispatch<React.SetStateAction<string>>
+  ) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (!raw) {
+      setter('');
+    } else {
+      const num = parseInt(raw, 10);
+      setter(num.toLocaleString('id-ID'));
+    }
+  };
 
   const handleCalculate = async () => {
     try {
@@ -49,12 +81,12 @@ export const ZakatDonation: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           type: calcType,
-          income,
-          other_income: otherIncome,
-          debt,
-          gold_weight_gram: goldWeight,
-          savings_amount: savings,
-          total_persons: persons,
+          income: parseRupiah(incomeStr),
+          other_income: parseRupiah(otherIncomeStr),
+          debt: parseRupiah(debtStr),
+          gold_weight_gram: parseFloat(goldWeightStr) || 0,
+          savings_amount: parseRupiah(savingsStr),
+          total_persons: parseInt(personsStr, 10) || 1,
           gold_price_per_gram: 1350000,
           rice_price_per_kg: 16000,
         }),
@@ -70,6 +102,14 @@ export const ZakatDonation: React.FC = () => {
 
   const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setDonationError(null);
+    const amount = parseRupiah(customAmountStr);
+
+    if (amount < 5000) {
+      setDonationError('Nominal donasi minimal adalah Rp 5.000');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -80,7 +120,7 @@ export const ZakatDonation: React.FC = () => {
           donor_email: donorEmail,
           program_title: programTitle,
           type: donationType,
-          amount: customAmount,
+          amount,
           payment_method: paymentMethod,
           notes,
         }),
@@ -94,6 +134,8 @@ export const ZakatDonation: React.FC = () => {
     }
   };
 
+  const currentDonationAmount = parseRupiah(customAmountStr);
+
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-16">
       {/* Header Banner */}
@@ -106,8 +148,8 @@ export const ZakatDonation: React.FC = () => {
           <h1 className="text-3xl sm:text-4xl font-black">
             Sedekah, Zakat & Infaq
           </h1>
-          <p className="text-xs sm:text-sm text-emerald-100">
-            Hitung kewajiban zakat maal, penghasilan, dan fitrah secara otomatis sesuai standar nisab syariah, serta salurkan sedekah dan infaq dengan simulasi pembayaran instan.
+          <p className="text-xs sm:text-sm text-emerald-100 leading-relaxed">
+            Hitung kewajiban zakat maal, penghasilan, dan fitrah secara otomatis sesuai standar nisab syariah, serta salurkan sedekah dan infaq dengan input nominal mudah & terformat rapi.
           </p>
         </div>
 
@@ -177,10 +219,12 @@ export const ZakatDonation: React.FC = () => {
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
                   <input
-                    type="number"
-                    value={income}
-                    onChange={(e) => setIncome(Number(e.target.value))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                    type="text"
+                    inputMode="numeric"
+                    value={incomeStr}
+                    onChange={handleCurrencyInputChange(setIncomeStr)}
+                    placeholder="0"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
                   />
                 </div>
               </div>
@@ -190,10 +234,12 @@ export const ZakatDonation: React.FC = () => {
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
                   <input
-                    type="number"
-                    value={otherIncome}
-                    onChange={(e) => setOtherIncome(Number(e.target.value))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                    type="text"
+                    inputMode="numeric"
+                    value={otherIncomeStr}
+                    onChange={handleCurrencyInputChange(setOtherIncomeStr)}
+                    placeholder="0"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
                   />
                 </div>
               </div>
@@ -203,10 +249,12 @@ export const ZakatDonation: React.FC = () => {
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
                   <input
-                    type="number"
-                    value={debt}
-                    onChange={(e) => setDebt(Number(e.target.value))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                    type="text"
+                    inputMode="numeric"
+                    value={debtStr}
+                    onChange={handleCurrencyInputChange(setDebtStr)}
+                    placeholder="0"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
                   />
                 </div>
               </div>
@@ -220,10 +268,12 @@ export const ZakatDonation: React.FC = () => {
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
                   <input
-                    type="number"
-                    value={savings}
-                    onChange={(e) => setSavings(Number(e.target.value))}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                    type="text"
+                    inputMode="numeric"
+                    value={savingsStr}
+                    onChange={handleCurrencyInputChange(setSavingsStr)}
+                    placeholder="0"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
                   />
                 </div>
               </div>
@@ -232,10 +282,11 @@ export const ZakatDonation: React.FC = () => {
                 <label className="text-xs font-bold text-slate-700">Emas Yang Dimiliki (Gram):</label>
                 <input
                   type="number"
-                  value={goldWeight}
-                  onChange={(e) => setGoldWeight(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-                  placeholder="Contoh: 85 gram"
+                  step="any"
+                  value={goldWeightStr}
+                  onChange={(e) => setGoldWeightStr(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
                 />
               </div>
             </div>
@@ -247,9 +298,10 @@ export const ZakatDonation: React.FC = () => {
               <input
                 type="number"
                 min="1"
-                value={persons}
-                onChange={(e) => setPersons(Number(e.target.value))}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                value={personsStr}
+                onChange={(e) => setPersonsStr(e.target.value)}
+                placeholder="1"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
               />
               <p className="text-[11px] text-slate-500">
                 Standar zakat fitrah adalah 2.5 kg beras per jiwa (estimasi harga beras premium Rp 16.000 / kg).
@@ -285,14 +337,14 @@ export const ZakatDonation: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 {calcResult.explanation}
               </p>
 
               {calcResult.zakat_amount > 0 && (
                 <button
                   onClick={() => {
-                    setCustomAmount(calcResult.zakat_amount);
+                    setCustomAmountStr(calcResult.zakat_amount.toLocaleString('id-ID'));
                     setDonationType(calcType === 'fitrah' ? 'zakat_fitrah' : calcType === 'maal' ? 'zakat_maal' : 'zakat_penghasilan');
                     setProgramTitle(`Zakat ${calcType.toUpperCase()}`);
                     setActiveTab('donate');
@@ -319,7 +371,7 @@ export const ZakatDonation: React.FC = () => {
                 value={donorName}
                 onChange={(e) => setDonorName(e.target.value)}
                 placeholder="Contoh: H. Ahmad Santoso"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
               />
             </div>
 
@@ -330,7 +382,7 @@ export const ZakatDonation: React.FC = () => {
                 value={donorEmail}
                 onChange={(e) => setDonorEmail(e.target.value)}
                 placeholder="email@anda.com"
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
               />
             </div>
           </div>
@@ -341,7 +393,7 @@ export const ZakatDonation: React.FC = () => {
               <select
                 value={programTitle}
                 onChange={(e) => setProgramTitle(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
               >
                 <option value="Sedekah Subuh Berkah">Sedekah Subuh Berkah</option>
                 <option value="Infaq Operasional & Al-Qur'an Masjid">Infaq Operasional & Al-Qur'an Masjid</option>
@@ -357,7 +409,7 @@ export const ZakatDonation: React.FC = () => {
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
               >
                 <option value="QRIS">QRIS (Gopay, OVO, ShopeePay, Dana, LinkAja)</option>
                 <option value="Transfer Bank BSI">Bank Syariah Indonesia (BSI)</option>
@@ -369,36 +421,73 @@ export const ZakatDonation: React.FC = () => {
 
           {/* Quick Amount Options */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700">Pilih Nominal Donasi:</label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              {[10000, 25000, 50000, 100000, 250000].map((amt) => (
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700">Pilih Nominal Donasi:</label>
+              {customAmountStr && (
                 <button
                   type="button"
-                  key={amt}
-                  onClick={() => setCustomAmount(amt)}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                    customAmount === amt
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-300'
-                  }`}
+                  onClick={() => setCustomAmountStr('')}
+                  className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold underline"
                 >
-                  Rp {amt.toLocaleString('id-ID')}
+                  Hapus / Reset
                 </button>
-              ))}
+              )}
             </div>
 
-            <div className="relative mt-2">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
-              <input
-                type="number"
-                min="5000"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(Number(e.target.value))}
-                placeholder="Atau ketik nominal kustom..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800"
-              />
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[10000, 25000, 50000, 100000, 250000].map((amt) => {
+                const isSelected = currentDonationAmount === amt;
+                return (
+                  <button
+                    type="button"
+                    key={amt}
+                    onClick={() => setCustomAmountStr(amt.toLocaleString('id-ID'))}
+                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
+                      isSelected
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-105'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    Rp {amt.toLocaleString('id-ID')}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Manual Numeric Input Field with Clean Backspace & Dots */}
+            <div className="relative mt-2">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-emerald-700">
+                Rp
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={customAmountStr}
+                onChange={handleCurrencyInputChange(setCustomAmountStr)}
+                placeholder="Ketik nominal manual bebas (contoh: 75.000)..."
+                className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all shadow-sm"
+              />
+              {customAmountStr && (
+                <button
+                  type="button"
+                  onClick={() => setCustomAmountStr('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition-all"
+                  title="Hapus nominal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              * Bebas ketik nominal berapa saja, angka dapat dihapus dan diedit secara fleksibel.
+            </p>
           </div>
+
+          {donationError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold">
+              {donationError}
+            </div>
+          )}
 
           {/* Doa / Notes */}
           <div className="space-y-1.5">
@@ -407,17 +496,19 @@ export const ZakatDonation: React.FC = () => {
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800"
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-sm shadow-emerald-glow flex items-center justify-center gap-2 transition-all active:scale-95"
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-sm shadow-emerald-glow flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
           >
             <Sparkles className="w-4 h-4 text-amber-300" />
-            {isSubmitting ? 'Memproses Donasi...' : `Konfirmasi Pembayaran (Rp ${customAmount.toLocaleString('id-ID')})`}
+            {isSubmitting
+              ? 'Memproses Donasi...'
+              : `Konfirmasi Pembayaran (Rp ${currentDonationAmount.toLocaleString('id-ID')})`}
           </button>
         </form>
       )}

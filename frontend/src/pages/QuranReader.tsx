@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Surah, JuzInfo, Ayah } from '../types';
+import { Surah, JuzInfo } from '../types';
 import { fetchApi } from '../utils/api';
 import { useSettings } from '../context/SettingsContext';
-import { useAudio } from '../context/AudioContext';
+import { useAudio, AudioTrack } from '../context/AudioContext';
 import { useAuth } from '../context/AuthContext';
 import { AyahEndMarker } from '../components/AyahEndMarker';
 import { renderTajweedText, TajweedRule } from '../utils/tajweed';
@@ -19,14 +19,21 @@ import {
   ChevronLeft,
   Sliders,
   Check,
-  Share2,
   Sparkles,
+  Radio,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const QuranReader: React.FC = () => {
   const { arabicSize, setArabicSize } = useSettings();
-  const { playTrack, currentTrack, isPlaying } = useAudio();
+  const {
+    playPlaylist,
+    currentTrack,
+    isPlaying,
+    togglePlay,
+    registerSurahEndedHandler,
+    autoNextSurah,
+  } = useAudio();
   const { user } = useAuth();
 
   const [surahs, setSurahs] = useState<Surah[]>([]);
@@ -41,6 +48,7 @@ export const QuranReader: React.FC = () => {
   const [isTajweedGuideOpen, setIsTajweedGuideOpen] = useState<boolean>(false);
   const [activeTajweed, setActiveTajweed] = useState<{ rule: TajweedRule; word: string } | null>(null);
 
+  // Load initial surah and juz list
   useEffect(() => {
     Promise.all([
       fetchApi<Surah[]>('/quran/surahs'),
@@ -54,6 +62,7 @@ export const QuranReader: React.FC = () => {
       .catch(() => setLoading(false));
   }, []);
 
+  // Open Surah view
   const openSurah = (surahNumber: number) => {
     setReadingLoading(true);
     fetchApi<Surah>(`/quran/surah/${surahNumber}`)
@@ -63,6 +72,95 @@ export const QuranReader: React.FC = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       })
       .catch(() => setReadingLoading(false));
+  };
+
+  // Continuous Surah-to-Surah Auto-Play Handler
+  useEffect(() => {
+    const unregister = registerSurahEndedHandler((endedSurahNum: number) => {
+      if (endedSurahNum < 114) {
+        const nextSurahNum = endedSurahNum + 1;
+        fetchApi<Surah>(`/quran/surah/${nextSurahNum}`)
+          .then((nextSurah) => {
+            if (nextSurah && nextSurah.ayahs && nextSurah.ayahs.length > 0) {
+              // Update reader view to follow audio playback
+              setSelectedSurah((prev) => {
+                if (prev && prev.number === endedSurahNum) {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  return nextSurah;
+                }
+                return prev;
+              });
+
+              // Create playlist for next surah and continue seamlessly
+              const nextTracks: AudioTrack[] = nextSurah.ayahs.map((a) => ({
+                title: `Surah ${nextSurah.name}`,
+                subtitle: `Ayat ${a.number_in_surah} dari ${nextSurah.total_ayahs} • Qari Mishary Rashid Alafasy`,
+                url: a.audio_url,
+                ayahNumber: a.number_in_surah,
+                surahNumber: nextSurah.number,
+                surahName: nextSurah.name,
+                totalAyahs: nextSurah.total_ayahs,
+              }));
+
+              playPlaylist(nextTracks, 0);
+            }
+          })
+          .catch((err) => console.warn('Failed to auto-advance to next surah:', err));
+      }
+    });
+
+    return unregister;
+  }, [registerSurahEndedHandler, playPlaylist]);
+
+  // Auto-scroll active playing ayah into view
+  useEffect(() => {
+    if (
+      currentTrack?.surahNumber &&
+      selectedSurah?.number &&
+      currentTrack.surahNumber === selectedSurah.number &&
+      currentTrack.ayahNumber
+    ) {
+      const el = document.getElementById(`ayah-${currentTrack.ayahNumber}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentTrack?.ayahNumber, currentTrack?.surahNumber, selectedSurah?.number]);
+
+  // Handle Play Full Surah
+  const handlePlayFullSurah = (surah: Surah, startAyahIndex: number = 0) => {
+    if (!surah.ayahs || surah.ayahs.length === 0) return;
+
+    const isCurrentSurah = currentTrack?.surahNumber === surah.number;
+
+    if (isCurrentSurah && startAyahIndex === 0) {
+      // Toggle play/pause for the active surah
+      togglePlay();
+      return;
+    }
+
+    // Build complete playlist of all ayahs in the surah
+    const tracks: AudioTrack[] = surah.ayahs.map((a) => ({
+      title: `Surah ${surah.name}`,
+      subtitle: `Ayat ${a.number_in_surah} dari ${surah.total_ayahs} • Qari Mishary Rashid Alafasy`,
+      url: a.audio_url,
+      ayahNumber: a.number_in_surah,
+      surahNumber: surah.number,
+      surahName: surah.name,
+      totalAyahs: surah.total_ayahs,
+    }));
+
+    playPlaylist(tracks, startAyahIndex);
+  };
+
+  // Play All from Surah 1 to 114
+  const handlePlayFromStart = () => {
+    openSurah(1);
+    fetchApi<Surah>('/quran/surah/1').then((surah1) => {
+      if (surah1) {
+        handlePlayFullSurah(surah1, 0);
+      }
+    });
   };
 
   const handleBookmark = async (surahNumber: number, surahName: string, ayahNumber: number) => {
@@ -109,11 +207,15 @@ export const QuranReader: React.FC = () => {
     }
   };
 
+  // ================= VIEW: SELECTED SURAH READER =================
   if (selectedSurah) {
+    const isThisSurahPlaying = currentTrack?.surahNumber === selectedSurah.number;
+    const isThisSurahActive = isThisSurahPlaying && isPlaying;
+
     return (
-      <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-16">
+      <div className="space-y-6 animate-fade-in max-w-5xl mx-auto pb-20">
         {/* Navigation & Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm z-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-emerald-100 shadow-sm z-10 sticky top-2 backdrop-blur-md bg-white/95">
           <button
             onClick={() => setSelectedSurah(null)}
             className="flex items-center gap-2 text-xs font-bold text-emerald-800 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2 rounded-xl transition-all"
@@ -122,10 +224,10 @@ export const QuranReader: React.FC = () => {
             Daftar Surah
           </button>
 
-          {/* Quick Font Sizer for elderly and all ages */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
-            <span className="font-semibold text-slate-500 flex items-center gap-1">
-              <Sliders className="w-3.5 h-3.5" /> Ukuran Huruf:
+          {/* Quick Font Sizer */}
+          <div className="flex items-center gap-1 sm:gap-2 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs">
+            <span className="font-semibold text-slate-500 hidden sm:flex items-center gap-1">
+              <Sliders className="w-3.5 h-3.5" /> Ukuran:
             </span>
             <button
               onClick={() => setArabicSize('normal')}
@@ -143,7 +245,7 @@ export const QuranReader: React.FC = () => {
               onClick={() => setArabicSize('huge')}
               className={`px-2 py-0.5 rounded font-bold ${arabicSize === 'huge' ? 'bg-emerald-600 text-white' : 'text-slate-600'}`}
             >
-              Lansia (A++)
+              Lansia
             </button>
           </div>
 
@@ -151,7 +253,7 @@ export const QuranReader: React.FC = () => {
             {/* Tajweed Toggle Button */}
             <button
               onClick={() => setEnableTajweed(!enableTajweed)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                 enableTajweed
                   ? 'bg-emerald-700 text-white shadow-md'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -162,23 +264,37 @@ export const QuranReader: React.FC = () => {
                 className={`w-2 h-2 rounded-full ${enableTajweed ? 'bg-amber-300 animate-pulse' : 'bg-slate-400'}`}
               />
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Tajwid: {enableTajweed ? 'Aktif' : 'Mati'}</span>
+              <span>Tajwid</span>
             </button>
 
+            {/* FULL CONTINUOUS SURAH AUDIO PLAYER BUTTON */}
             <button
-              onClick={() => {
-                if (selectedSurah.ayahs && selectedSurah.ayahs.length > 0) {
-                  playTrack({
-                    title: `Surah ${selectedSurah.name}`,
-                    subtitle: `Ayat 1 - Qari Mishary Rashid Alafasy`,
-                    url: selectedSurah.ayahs[0].audio_url,
-                  });
-                }
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-300 text-emerald-950 font-bold text-xs shadow-gold-glow hover:scale-105 active:scale-95 transition-all"
+              onClick={() => handlePlayFullSurah(selectedSurah, 0)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs transition-all shadow-md active:scale-95 ${
+                isThisSurahActive
+                  ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 animate-pulse'
+                  : isThisSurahPlaying
+                  ? 'bg-amber-500 text-emerald-950 ring-2 ring-amber-300'
+                  : 'bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 text-emerald-950 shadow-gold-glow hover:scale-105'
+              }`}
+              title="Putar surah secara bersambung dari ayat awal sampai akhir"
             >
-              <Volume2 className="w-4 h-4" />
-              Putar Surah
+              {isThisSurahActive ? (
+                <>
+                  <Pause className="w-4 h-4 fill-current" />
+                  <span>Jeda Surah ({currentTrack?.ayahNumber || 1}/{selectedSurah.total_ayahs})</span>
+                </>
+              ) : isThisSurahPlaying ? (
+                <>
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>Lanjutkan Surah</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-4 h-4" />
+                  <span>Putar Surah</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -191,7 +307,7 @@ export const QuranReader: React.FC = () => {
         {/* Surah Header Card */}
         <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-emerald-800 via-emerald-700 to-emerald-900 text-white text-center shadow-xl border border-emerald-600/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-          
+
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-xs text-amber-300 font-semibold mb-3">
             <span>Surah ke-{selectedSurah.number}</span> • <span>{selectedSurah.revelation_type}</span> • <span>{selectedSurah.total_ayahs} Ayat</span>
           </div>
@@ -203,8 +319,18 @@ export const QuranReader: React.FC = () => {
             {selectedSurah.arabic_name}
           </div>
 
+          {/* Continuous Surah Info Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[11px] text-emerald-100 backdrop-blur-sm border border-white/15">
+            <Radio className="w-3 h-3 text-amber-300 animate-pulse" />
+            <span>
+              {autoNextSurah
+                ? 'Mode Bersambung: Otomatis lanjut ke surah selanjutnya'
+                : 'Mode Standar'}
+            </span>
+          </div>
+
           {selectedSurah.number !== 1 && selectedSurah.number !== 9 && (
-            <div className="pt-4 border-t border-emerald-600/40 max-w-md mx-auto">
+            <div className="pt-4 mt-4 border-t border-emerald-600/40 max-w-md mx-auto">
               <p className="font-arabic-center text-2xl sm:text-3xl text-emerald-100">
                 بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
               </p>
@@ -222,49 +348,72 @@ export const QuranReader: React.FC = () => {
               Memuat ayat Al-Qur'an...
             </div>
           ) : (
-            selectedSurah.ayahs?.map((ayah) => {
-              const isCurrentPlaying = currentTrack?.url === ayah.audio_url && isPlaying;
+            selectedSurah.ayahs?.map((ayah, index) => {
+              const isCurrentPlaying =
+                currentTrack?.surahNumber === selectedSurah.number &&
+                currentTrack?.ayahNumber === ayah.number_in_surah &&
+                isPlaying;
+
+              const isCurrentPaused =
+                currentTrack?.surahNumber === selectedSurah.number &&
+                currentTrack?.ayahNumber === ayah.number_in_surah &&
+                !isPlaying;
+
               return (
                 <div
                   key={ayah.number_in_surah}
                   id={`ayah-${ayah.number_in_surah}`}
-                  className={`clay-card p-5 sm:p-6 transition-all ${
+                  className={`clay-card p-5 sm:p-6 transition-all duration-300 ${
                     isCurrentPlaying
-                      ? 'ring-2 ring-amber-400 bg-amber-50/20 border-amber-300'
+                      ? 'ring-4 ring-amber-400 bg-amber-50/30 border-amber-400 shadow-xl shadow-amber-400/10'
+                      : isCurrentPaused
+                      ? 'ring-2 ring-emerald-300 bg-emerald-50/20'
                       : 'bg-white'
                   }`}
                 >
                   {/* Ayah Header Strip */}
                   <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs flex items-center justify-center border border-emerald-200 shadow-sm">
+                      <div
+                        className={`w-8 h-8 rounded-full font-extrabold text-xs flex items-center justify-center border shadow-sm transition-all ${
+                          isCurrentPlaying
+                            ? 'bg-amber-400 text-emerald-950 border-amber-500 scale-110'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        }`}
+                      >
                         {ayah.number_in_surah}
                       </div>
                       <span className="text-xs font-semibold text-slate-400">
                         Ayat {ayah.number_in_surah}
                       </span>
+                      {isCurrentPlaying && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-emerald-950 text-[10px] font-black animate-pulse">
+                          <Volume2 className="w-3 h-3" /> Sedang Diputar
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {/* Play Ayah Audio */}
+                      {/* Play from this Ayah Continuously */}
                       <button
-                        onClick={() =>
-                          playTrack({
-                            title: `Surah ${selectedSurah.name} : Ayat ${ayah.number_in_surah}`,
-                            subtitle: 'Qari Mishary Rashid Alafasy',
-                            url: ayah.audio_url,
-                            ayahNumber: ayah.number_in_surah,
-                          })
-                        }
-                        className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-all ${
+                        onClick={() => handlePlayFullSurah(selectedSurah, index)}
+                        className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                           isCurrentPlaying
                             ? 'bg-amber-400 text-emerald-950 shadow-md'
+                            : isCurrentPaused
+                            ? 'bg-emerald-100 text-emerald-900'
                             : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
                         }`}
-                        title="Putar Audio Ayat"
+                        title="Putar ayat ini dan lanjutkan seterusnya"
                       >
-                        {isCurrentPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                        <span className="hidden sm:inline">Audio</span>
+                        {isCurrentPlaying ? (
+                          <Pause className="w-3.5 h-3.5 fill-current" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {isCurrentPlaying ? 'Jeda' : 'Putar'}
+                        </span>
                       </button>
 
                       {/* Bookmark Button */}
@@ -293,7 +442,10 @@ export const QuranReader: React.FC = () => {
                       {renderTajweedText(ayah.arab, enableTajweed, (rule, word) => {
                         setActiveTajweed({ rule, word });
                       })}
-                      <AyahEndMarker number={ayah.number_in_surah} size={arabicSize === 'huge' ? 'lg' : arabicSize === 'large' ? 'md' : 'sm'} />
+                      <AyahEndMarker
+                        number={ayah.number_in_surah}
+                        size={arabicSize === 'huge' ? 'lg' : arabicSize === 'large' ? 'md' : 'sm'}
+                      />
                     </p>
                   </div>
 
@@ -332,6 +484,7 @@ export const QuranReader: React.FC = () => {
     );
   }
 
+  // ================= VIEW: SURAHS LIST =================
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {/* Title & Tabs */}
@@ -342,7 +495,7 @@ export const QuranReader: React.FC = () => {
             Bacaan Al-Qur'an 30 Juz
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Pilih surah dari 114 surah mushaf Al-Qur'an lengkap dengan audio murattal & terjemahan
+            114 surah mushaf Al-Qur'an lengkap dengan audio murattal bersambung & terjemahan
           </p>
         </div>
 
@@ -367,6 +520,29 @@ export const QuranReader: React.FC = () => {
         </div>
       </div>
 
+      {/* Play Continuous Quran Banner */}
+      <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-r from-emerald-900 via-teal-800 to-emerald-950 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-emerald-700/50">
+        <div className="space-y-1 text-center sm:text-left">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400 text-emerald-950 font-black text-[10px] uppercase">
+            <Radio className="w-3 h-3 animate-pulse" /> Murottal Bersambung
+          </div>
+          <h3 className="text-base sm:text-lg font-black text-white">
+            Putar Al-Qur'an dari Surah Pertama (Al-Fatihah)
+          </h3>
+          <p className="text-xs text-emerald-100">
+            Audio akan diputar berurutan dari ayat awal sampai akhir surah, lalu otomatis lanjut ke surah berikutnya hingga khatam.
+          </p>
+        </div>
+
+        <button
+          onClick={handlePlayFromStart}
+          className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-300 hover:from-amber-300 hover:to-amber-400 text-emerald-950 font-black text-xs sm:text-sm shadow-gold-glow flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-all shrink-0"
+        >
+          <Play className="w-4 h-4 fill-current" />
+          <span>Mulai Putar Al-Fatihah</span>
+        </button>
+      </div>
+
       {/* Search Bar */}
       <div className="relative">
         <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -382,36 +558,49 @@ export const QuranReader: React.FC = () => {
       {/* Surahs View */}
       {activeView === 'surah' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredSurahs.map((surah) => (
-            <div
-              key={surah.number}
-              onClick={() => openSurah(surah.number)}
-              className="clay-card p-4 sm:p-5 cursor-pointer group flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-black text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
-                  {surah.number}
+          {filteredSurahs.map((surah) => {
+            const isPlayingThisSurah = currentTrack?.surahNumber === surah.number && isPlaying;
+            return (
+              <div
+                key={surah.number}
+                onClick={() => openSurah(surah.number)}
+                className={`clay-card p-4 sm:p-5 cursor-pointer group flex items-center justify-between transition-all ${
+                  isPlayingThisSurah
+                    ? 'ring-2 ring-amber-400 bg-amber-50/30'
+                    : 'hover:border-emerald-300'
+                }`}
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div
+                    className={`w-10 h-10 rounded-2xl font-black text-xs flex items-center justify-center flex-shrink-0 transition-all shadow-sm ${
+                      isPlayingThisSurah
+                        ? 'bg-amber-400 text-emerald-950 ring-2 ring-amber-300 animate-pulse'
+                        : 'bg-emerald-50 border border-emerald-200 text-emerald-800 group-hover:bg-emerald-600 group-hover:text-white'
+                    }`}
+                  >
+                    {isPlayingThisSurah ? <Volume2 className="w-4 h-4" /> : surah.number}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
+                      {surah.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 truncate">
+                      {surah.translation_name} • {surah.total_ayahs} Ayat
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
-                    {surah.name}
-                  </h3>
-                  <p className="text-xs text-slate-500 truncate">
-                    {surah.translation_name} • {surah.total_ayahs} Ayat
-                  </p>
-                </div>
-              </div>
 
-              <div className="text-right flex-shrink-0 pl-2">
-                <div className="font-arabic text-xl font-bold text-emerald-800 group-hover:text-emerald-600 transition-colors">
-                  {surah.arabic_name}
+                <div className="text-right flex-shrink-0 pl-2">
+                  <div className="font-arabic text-xl font-bold text-emerald-800 group-hover:text-emerald-600 transition-colors">
+                    {surah.arabic_name}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    {surah.revelation_type}
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-semibold">
-                  {surah.revelation_type}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -422,7 +611,7 @@ export const QuranReader: React.FC = () => {
             <div
               key={juz.juz_number}
               onClick={() => openSurah(juz.start_surah)}
-              className="clay-card p-5 cursor-pointer group flex flex-col justify-between"
+              className="clay-card p-5 cursor-pointer group flex flex-col justify-between hover:border-emerald-300 transition-all"
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs">

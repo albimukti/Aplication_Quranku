@@ -17,6 +17,15 @@ type QiblaResult struct {
 	DistanceKm       float64 `json:"distance_km"`       // Distance in kilometers
 }
 
+func getCompassDirection(deg float64) string {
+	directions := []string{"Utara", "Timur Laut", "Timur", "Tenggara", "Selatan", "Barat Daya", "Barat", "Barat Laut"}
+	idx := int(math.Round(deg/45.0)) % 8
+	if idx < 0 {
+		idx += 8
+	}
+	return directions[idx]
+}
+
 func CalculateQibla(lat, lng float64) QiblaResult {
 	phiK := degToRad(KaabaLat)
 	lambdaK := degToRad(KaabaLng)
@@ -40,11 +49,13 @@ func CalculateQibla(lat, lng float64) QiblaResult {
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 	distKm := 6371.0 * c
 
+	roundedDeg := math.Round(qiblaDeg*10) / 10
+
 	return QiblaResult{
 		Latitude:         lat,
 		Longitude:        lng,
-		QiblaDegree:      math.Round(qiblaDeg*10) / 10,
-		DirectionCompass: "Barat Laut",
+		QiblaDegree:      roundedDeg,
+		DirectionCompass: getCompassDirection(roundedDeg),
 		DistanceKm:       math.Round(distKm),
 	}
 }
