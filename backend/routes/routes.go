@@ -9,6 +9,16 @@ import (
 )
 
 func SetupRoutes(app *fiber.App) {
+	// Root service check
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status":  "online",
+			"app":     "Quranku Modern Islamic App API",
+			"version": "1.0.0",
+			"health":  "/api/health",
+		})
+	})
+
 	api := app.Group("/api")
 
 	// Health check
