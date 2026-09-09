@@ -21,6 +21,15 @@ func SetupRoutes(app *fiber.App) {
 
 	api := app.Group("/api")
 
+	api.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status":  "online",
+			"app":     "Quranku API",
+			"version": "1.0.0",
+			"health":  "/api/health",
+		})
+	})
+
 	// Health check
 	api.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
@@ -29,6 +38,7 @@ func SetupRoutes(app *fiber.App) {
 			"version": "1.0.0",
 		})
 	})
+
 
 	// Auth routes
 	auth := api.Group("/auth")

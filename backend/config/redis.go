@@ -92,22 +92,42 @@ func (m *MemoryCache) Del(ctx context.Context, keys ...string) error {
 var Cache CacheService
 
 func InitRedis(cfg *Config) CacheService {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisAddr,
-		Password: cfg.RedisPass,
-		DB:       0,
-	})
+	var rdb *redis.Client
+
+	if cfg.RedisUrl != "" {
+		opt, err := redis.ParseURL(cfg.RedisUrl)
+		if err != nil {
+			log.Printf("[Cache] Failed to parse Vercel KV URL (%v). Attempting fallback...\n", err)
+		} else {
+			log.Println("[Cache] Connecting to Vercel KV (Redis) via KV_URL / REDIS_URL...")
+			rdb = redis.NewClient(opt)
+		}
+	}
+
+	if rdb == nil {
+		rdb = redis.NewClient(&redis.Options{
+			Addr:     cfg.RedisAddr,
+			Password: cfg.RedisPass,
+			DB:       0,
+		})
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		log.Printf("[Cache] Redis ping failed at %s (%v). Using high-speed in-memory cache engine.\n", cfg.RedisAddr, err)
+		targetAddr := cfg.RedisAddr
+		if cfg.RedisUrl != "" {
+			targetAddr = "Vercel KV"
+		}
+		log.Printf("[Cache] Redis ping failed (%v). Using high-speed in-memory cache engine.\n", err)
+		_ = targetAddr
 		Cache = NewMemoryCache()
 	} else {
-		log.Printf("[Cache] Connected to Redis at %s!\n", cfg.RedisAddr)
+		log.Println("[Cache] Connected successfully to Redis / Vercel KV!")
 		Cache = &RedisCache{Client: rdb}
 	}
 	return Cache
 }
+

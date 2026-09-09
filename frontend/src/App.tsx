@@ -23,7 +23,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 
 const MainApp: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('login');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isAdhanModalOpen, setIsAdhanModalOpen] = useState<boolean>(false);
   const { user, isLoading } = useAuth();
 
@@ -35,23 +35,6 @@ const MainApp: React.FC = () => {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 selection:bg-emerald-500 selection:text-white">
-        {activeTab === 'register' ? (
-          <Register
-            onSuccess={() => setActiveTab('dashboard')}
-            onGoToLogin={() => setActiveTab('login')}
-          />
-        ) : (
-          <Login
-            onSuccess={() => setActiveTab('dashboard')}
-            onGoToRegister={() => setActiveTab('register')}
-          />
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-emerald-500 selection:text-white">
@@ -88,7 +71,20 @@ const MainApp: React.FC = () => {
                 }}
               />
             )}
+            {activeTab === 'login' && (
+              <Login
+                onSuccess={() => setActiveTab('dashboard')}
+                onGoToRegister={() => setActiveTab('register')}
+              />
+            )}
+            {activeTab === 'register' && (
+              <Register
+                onSuccess={() => setActiveTab('dashboard')}
+                onGoToLogin={() => setActiveTab('login')}
+              />
+            )}
           </main>
+
 
           <Footer setActiveTab={setActiveTab} />
         </div>

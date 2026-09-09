@@ -1,8 +1,25 @@
-const BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-    ? 'https://ata-payday-adventures-assistant.trycloudflare.com/api'
-    : 'http://localhost:8080/api');
+const getBaseUrl = (): string => {
+  // If explicitly configured via environment variable, use it
+  if (import.meta.env.VITE_API_URL) {
+    return (import.meta.env.VITE_API_URL as string).replace(/\/+$/, '');
+  }
+
+  // When deployed to production (e.g. on Vercel), use relative '/api'
+  // to avoid CORS and connect directly to Vercel Serverless Function or rewrites
+  if (
+    typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    return '/api';
+  }
+
+  // Default to local backend during development
+  return 'http://localhost:8080/api';
+};
+
+const BASE_URL = getBaseUrl();
+
 
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('quranku_token');
