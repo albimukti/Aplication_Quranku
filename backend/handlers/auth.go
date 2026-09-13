@@ -30,15 +30,34 @@ func SeedDefaultUsers() {
 		}
 		config.DB.Create(&adminUser)
 		log.Println("[Seed] Default admin created: admin@quranku.id / P@ssw0rd")
-		return
+	} else {
+		adminUser.Name = "Administrator Quranku"
+		adminUser.Role = models.RoleAdmin
+		adminUser.AvatarURL = "https://api.dicebear.com/7.x/bottts/svg?seed=admin"
+		adminUser.Password = hashPassword("P@ssw0rd")
+		config.DB.Save(&adminUser)
+		log.Println("[Seed] Default admin verified and reset to: admin@quranku.id / P@ssw0rd")
 	}
 
-	adminUser.Name = "Administrator Quranku"
-	adminUser.Role = models.RoleAdmin
-	adminUser.AvatarURL = "https://api.dicebear.com/7.x/bottts/svg?seed=admin"
-	adminUser.Password = hashPassword("P@ssw0rd")
-	config.DB.Save(&adminUser)
-	log.Println("[Seed] Default admin verified and reset to: admin@quranku.id / P@ssw0rd")
+	var demoUser models.User
+	if err := config.DB.Where("LOWER(email) = ?", strings.ToLower("user@quranku.id")).First(&demoUser).Error; err != nil {
+		demoUser = models.User{
+			Name:      "Pengguna Quranku",
+			Email:     "user@quranku.id",
+			Password:  hashPassword("P@ssw0rd"),
+			Role:      models.RoleUser,
+			AvatarURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=user",
+		}
+		config.DB.Create(&demoUser)
+		log.Println("[Seed] Default user created: user@quranku.id / P@ssw0rd")
+	} else {
+		demoUser.Name = "Pengguna Quranku"
+		demoUser.Role = models.RoleUser
+		demoUser.AvatarURL = "https://api.dicebear.com/7.x/avataaars/svg?seed=user"
+		demoUser.Password = hashPassword("P@ssw0rd")
+		config.DB.Save(&demoUser)
+		log.Println("[Seed] Default user verified: user@quranku.id / P@ssw0rd")
+	}
 }
 
 func generateToken(user *models.User, secret string) (string, error) {
@@ -62,6 +81,9 @@ func Login(c *fiber.Ctx) error {
 	normalizedEmail := strings.TrimSpace(req.Email)
 	if normalizedEmail == "admin" {
 		normalizedEmail = "admin@quranku.id"
+	}
+	if normalizedEmail == "user" {
+		normalizedEmail = "user@quranku.id"
 	}
 
 	var user models.User

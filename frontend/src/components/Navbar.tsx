@@ -110,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
         </nav>
 
         <div className="mt-5 hidden lg:block">
-          {user ? (
+          {user && (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center gap-3">
                 <img
@@ -126,50 +126,44 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
 
               <button
                 onClick={logout}
-                className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 px-3 py-2 text-xs font-bold transition-colors"
+                className="mt-3 w-full flex items-center justify-center gap-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 px-3 py-2 text-xs font-bold transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Keluar
               </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setActiveTab('login')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all"
-            >
-              <UserIcon className="w-4 h-4" />
-              Masuk / Daftar
-            </button>
           )}
         </div>
 
         <div className="flex lg:hidden items-center justify-between gap-2 mt-5">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          {user ? (
-            <button
-              onClick={() => setActiveTab('profile')}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700"
-            >
-              <img
-                src={user.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
-                alt={user.name}
-                className="w-6 h-6 rounded-full"
-              />
-              <span>{user.name.split(' ')[0]}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setActiveTab('login')}
-              className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
-            >
-              Masuk
-            </button>
+          {user && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('profile')}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <img
+                  src={user.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
+                  alt={user.name}
+                  className="w-6 h-6 rounded-full"
+                />
+                <span>{user.name.split(' ')[0]}</span>
+              </button>
+              <button
+                onClick={logout}
+                title="Keluar"
+                className="p-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors flex items-center justify-center cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -198,8 +192,20 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
                 </button>
               );
             })}
-          </div>
 
+            {user && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  logout();
+                }}
+                className="col-span-2 mt-2 w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Keluar dari Akun</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </aside>

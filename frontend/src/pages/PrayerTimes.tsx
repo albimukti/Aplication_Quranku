@@ -3,6 +3,7 @@ import { PrayerTimes as PrayerTimesType, City } from '../types';
 import { fetchApi } from '../utils/api';
 import { useSettings } from '../context/SettingsContext';
 import { Icon3DPrayer } from '../components/3d/Icons3D';
+import { INDONESIAN_CITIES } from '../utils/cities';
 import {
   Clock,
   MapPin,
@@ -13,6 +14,7 @@ import {
   Volume2,
   CheckCircle,
   Sparkles,
+  Search,
 } from 'lucide-react';
 
 interface PrayerTimesProps {
@@ -22,7 +24,7 @@ interface PrayerTimesProps {
 export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest }) => {
   const { activeCityId, setActiveCityId, activeCityName, setActiveCityName, alarms, toggleAlarm } = useSettings();
 
-  const [cities, setCities] = useState<City[]>([]);
+  const [cities, setCities] = useState<City[]>(INDONESIAN_CITIES);
   const [prayerData, setPrayerData] = useState<PrayerTimesType | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -30,19 +32,41 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
   const [citySearch, setCitySearch] = useState<string>('');
 
   useEffect(() => {
-    fetchApi<City[]>('/prayer/cities').then((data) => {
-      setCities(data);
-    });
+    fetchApi<City[]>('/prayer/cities')
+      .then((data) => {
+        if (data && data.length > 0) {
+          // Merge to ensure all cities are available
+          setCities((prev) => {
+            const map = new Map<string, City>();
+            [...INDONESIAN_CITIES, ...data].forEach((c) => map.set(c.id, c));
+            return Array.from(map.values());
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const loadPrayers = (cityId: string, date: string) => {
     setLoading(true);
-    fetchApi<PrayerTimesType>(`/prayer/times?city=${cityId}&date=${date}`)
+    const targetCity = cities.find((c) => c.id === cityId) || INDONESIAN_CITIES.find((c) => c.id === cityId);
+    const query = targetCity
+      ? `/prayer/times?city=${cityId}&lat=${targetCity.latitude}&lng=${targetCity.longitude}&date=${date}`
+      : `/prayer/times?city=${cityId}&date=${date}`;
+
+    fetchApi<PrayerTimesType>(query)
       .then((data) => {
-        setPrayerData(data);
+        if (data) {
+          if (targetCity && (!data.city || data.city.includes('Lokasi Saya'))) {
+            data.city = `${targetCity.name}, ${targetCity.province}`;
+          }
+          setPrayerData(data);
+        }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.error('Error fetching prayer times:', err);
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -51,7 +75,7 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
 
   const handleCitySelect = (city: City) => {
     setActiveCityId(city.id);
-    setActiveCityName(city.name);
+    setActiveCityName(`${city.name}, ${city.province}`);
   };
 
   const handleUseGeolocation = () => {
@@ -129,12 +153,34 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
 
       {/* City & Date Filter Bar */}
       <div className="clay-card p-5 bg-white space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
           {/* City Selection Dropdown with Search */}
-          <div className="sm:col-span-6 space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Pilih Kota / Kabupaten:
-            </label>
+          <div className="sm:col-span-7 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Pilih Kota / Kabupaten ({cities.length} Wilayah):
+              </label>
+              {citySearch && (
+                <button
+                  onClick={() => setCitySearch('')}
+                  className="text-[10px] text-rose-500 hover:underline"
+                >
+                  Reset Cari
+                </button>
+              )}
+            </div>
+
+            <div className="relative mb-1.5">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={citySearch}
+                onChange={(e) => setCitySearch(e.target.value)}
+                placeholder="Ketik untuk memfilter (misal: Bandung, Surabaya, Solo, Jabar)..."
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
             <div className="flex gap-2">
               <select
                 value={activeCityId}
@@ -144,7 +190,7 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
                 }}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                {cities.map((c) => (
+                {(citySearch ? filteredCities : cities).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.province}) - {c.timezone}
                   </option>
@@ -154,7 +200,7 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
               <button
                 onClick={handleUseGeolocation}
                 disabled={geoLoading}
-                className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-bold flex items-center gap-1 flex-shrink-0 transition-all"
+                className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-bold flex items-center gap-1 flex-shrink-0 transition-all cursor-pointer"
                 title="Gunakan GPS Lokasi Saya"
               >
                 <Navigation className={`w-3.5 h-3.5 ${geoLoading ? 'animate-spin' : ''}`} />
@@ -164,7 +210,7 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
           </div>
 
           {/* Date Picker */}
-          <div className="sm:col-span-6 space-y-1.5">
+          <div className="sm:col-span-5 space-y-1.5">
             <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Tanggal Jadwal:
             </label>
@@ -177,6 +223,14 @@ export const PrayerTimesPage: React.FC<PrayerTimesProps> = ({ onOpenAdhanTest })
           </div>
         </div>
       </div>
+
+      {/* Loading state indicator */}
+      {loading && !prayerData && (
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm">
+          <div className="w-8 h-8 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+          <p className="mt-3 text-xs font-semibold text-slate-500">Memuat Jadwal Sholat...</p>
+        </div>
+      )}
 
       {/* Active City & Next Prayer Highlight Card */}
       {prayerData && (
