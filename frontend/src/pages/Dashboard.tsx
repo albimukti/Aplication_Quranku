@@ -42,6 +42,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onOpenAdhanT
   const [currentTime, setCurrentTime] = useState<string>('');
   const [activeTajweed, setActiveTajweed] = useState<{ rule: TajweedRule; word: string } | null>(null);
 
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -153,15 +160,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onOpenAdhanT
             {/* Quick Action Buttons in Hero */}
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
-                onClick={() => setActiveTab('quran')}
-                className="px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-sm shadow-gold-glow hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                type="button"
+                onClick={() => handleTabChange('quran')}
+                className="px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-sm shadow-gold-glow hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <BookOpen className="w-4 h-4" />
                 Mulai Baca Al-Qur'an
               </button>
               <button
-                onClick={() => setActiveTab('iqro')}
-                className="px-6 py-3 rounded-2xl bg-emerald-900/60 hover:bg-emerald-900 border border-emerald-400/40 text-white font-semibold text-sm transition-all flex items-center gap-2"
+                type="button"
+                onClick={() => handleTabChange('iqro')}
+                className="px-6 py-3 rounded-2xl bg-emerald-900/60 hover:bg-emerald-900 border border-emerald-400/40 text-white font-semibold text-sm transition-all flex items-center gap-2 cursor-pointer"
               >
                 <Icon3DIqro className="w-4 h-4" />
                 Belajar Iqro' Jilid 1-6
@@ -219,14 +228,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onOpenAdhanT
 
                   <div className="flex items-center justify-between pt-3 text-[11px] text-emerald-300">
                     <button
-                      onClick={() => setActiveTab('prayer')}
-                      className="hover:text-amber-300 underline flex items-center gap-1"
+                      type="button"
+                      onClick={() => handleTabChange('prayer')}
+                      className="hover:text-amber-300 underline flex items-center gap-1 cursor-pointer"
                     >
                       Lihat Jadwal Lengkap (Isya, Dhuha, Imsak) <ChevronRight className="w-3 h-3" />
                     </button>
                     <button
+                      type="button"
                       onClick={onOpenAdhanTest}
-                      className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-semibold"
+                      className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-semibold cursor-pointer"
                     >
                       <Bell className="w-3 h-3" /> Uji Adzan
                     </button>
@@ -261,7 +272,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onOpenAdhanT
             return (
               <div
                 key={f.id}
-                onClick={() => setActiveTab(f.id)}
+                onClick={() => handleTabChange(f.id)}
                 className="clay-card p-5 cursor-pointer group flex flex-col justify-between relative overflow-hidden"
               >
                 {/* Background glow hover */}

@@ -7,6 +7,13 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
+  const handleNavClick = (tabId: string) => {
+    setActiveTab(tabId);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
+
   return (
     <footer className="bg-gradient-to-b from-slate-900 to-emerald-950 text-slate-300 pt-12 pb-24 border-t border-emerald-900/50 mt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,22 +43,22 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <button onClick={() => setActiveTab('quran')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('quran')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Bacaan Al-Qur'an 30 Juz
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('juz-amma')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('juz-amma')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Juz 'Amma Khusus (Hafalan)
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('iqro')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('iqro')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Belajar Iqro' Jilid 1 - 6
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('doa')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('doa')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Doa Sholat & Harian Lengkap
                 </button>
               </li>
@@ -65,22 +72,22 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <button onClick={() => setActiveTab('prayer')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('prayer')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Waktu Sholat Seluruh Indonesia
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('qibla')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('qibla')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Arah Kiblat (Kompas 3D)
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('masjid')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('masjid')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Masjid Terdekat (Google Maps)
                 </button>
               </li>
               <li>
-                <button onClick={() => setActiveTab('zakat')} className="hover:text-emerald-400 transition-colors">
+                <button type="button" onClick={() => handleNavClick('zakat')} className="hover:text-emerald-400 transition-colors cursor-pointer">
                   Kalkulator Zakat & Infaq
                 </button>
               </li>

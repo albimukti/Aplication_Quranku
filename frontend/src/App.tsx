@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { AudioProvider } from './context/AudioContext';
@@ -27,6 +27,22 @@ const MainApp: React.FC = () => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isAdhanModalOpen, setIsAdhanModalOpen] = useState<boolean>(false);
   const { user, isLoading } = useAuth();
+
+  // Selalu gulir ke bagian paling atas saat berpindah menu/tab
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const mainEl = document.getElementById('main-content');
+      if (mainEl) mainEl.scrollTop = 0;
+    };
+
+    scrollToTop();
+    // Jalankan juga setelah render DOM selesai
+    const timer = setTimeout(scrollToTop, 10);
+    return () => clearTimeout(timer);
+  }, [activeTab]);
 
   if (isLoading) {
     return (
@@ -90,7 +106,7 @@ const MainApp: React.FC = () => {
         />
 
         <div className="flex-1 min-w-0 flex flex-col justify-between lg:pt-0">
-          <main className="flex-1 w-full mx-auto px-4 sm:px-6 lg:px-5 pt-4 pb-8 lg:max-w-[calc(100vw-22rem)]">
+          <main id="main-content" className="flex-1 w-full mx-auto px-4 sm:px-6 lg:px-5 pt-4 pb-8 lg:max-w-[calc(100vw-22rem)]">
             {activeTab === 'dashboard' && (
               <Dashboard
                 setActiveTab={setActiveTab}

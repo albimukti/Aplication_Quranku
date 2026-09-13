@@ -28,6 +28,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
   const { user, role, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const handleSelectTab = (tabId: string) => {
+    setActiveTab(tabId);
+    setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const mainEl = document.getElementById('main-content');
+    if (mainEl) mainEl.scrollTop = 0;
+  };
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Sparkles },
     { id: 'quran', label: "Al-Qur'an", icon: BookOpen },
@@ -66,7 +76,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
 
       <div className="p-4 lg:p-4">
         <div
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => handleSelectTab('dashboard')}
           className="flex items-center gap-3 cursor-pointer group select-none pb-4 border-b border-emerald-100"
         >
           <div className="p-2 bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-2xl border border-emerald-200 group-hover:scale-105 transition-all">
@@ -95,8 +105,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all text-sm font-semibold ${
+                type="button"
+                onClick={() => handleSelectTab(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all text-sm font-semibold cursor-pointer ${
                   isActive
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                     : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-700'
@@ -146,7 +157,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
           {user && (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setActiveTab('profile')}
+                type="button"
+                onClick={() => handleSelectTab('profile')}
                 className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
               >
                 <img
@@ -157,6 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
                 <span>{user.name.split(' ')[0]}</span>
               </button>
               <button
+                type="button"
                 onClick={logout}
                 title="Keluar"
                 className="p-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors flex items-center justify-center cursor-pointer"
@@ -177,11 +190,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  type="button"
+                  onClick={() => handleSelectTab(item.id)}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-50 text-slate-700 hover:bg-emerald-50'
