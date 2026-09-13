@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Surah, JuzInfo } from '../types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Surah, JuzInfo, Ayah } from '../types';
 import { fetchApi } from '../utils/api';
 import { useSettings } from '../context/SettingsContext';
 import { useAudio, AudioTrack } from '../context/AudioContext';
@@ -21,8 +21,142 @@ import {
   Check,
   Sparkles,
   Radio,
+  ChevronDown,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+interface AyahCardProps {
+  ayah: Ayah;
+  index: number;
+  surahNumber: number;
+  surahName: string;
+  isCurrentPlaying: boolean;
+  isCurrentPaused: boolean;
+  isBookmarked: boolean;
+  enableTajweed: boolean;
+  arabicFontClass: string;
+  arabicSize: string;
+  onPlay: (index: number) => void;
+  onBookmark: (surahNumber: number, surahName: string, ayahNumber: number) => void;
+  onWordClick: (rule: TajweedRule, word: string) => void;
+}
+
+const AyahCard = React.memo<AyahCardProps>(({
+  ayah,
+  index,
+  surahNumber,
+  surahName,
+  isCurrentPlaying,
+  isCurrentPaused,
+  isBookmarked,
+  enableTajweed,
+  arabicFontClass,
+  arabicSize,
+  onPlay,
+  onBookmark,
+  onWordClick,
+}) => {
+  return (
+    <div
+      id={`ayah-${ayah.number_in_surah}`}
+      className={`clay-card p-5 sm:p-6 transition-all duration-300 ${
+        isCurrentPlaying
+          ? 'ring-4 ring-amber-400 bg-amber-50/30 border-amber-400 shadow-xl shadow-amber-400/10'
+          : isCurrentPaused
+          ? 'ring-2 ring-emerald-300 bg-emerald-50/20'
+          : 'bg-white'
+      }`}
+    >
+      {/* Ayah Header Strip */}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-8 h-8 rounded-full font-extrabold text-xs flex items-center justify-center border shadow-sm transition-all ${
+              isCurrentPlaying
+                ? 'bg-amber-400 text-emerald-950 border-amber-500 scale-110'
+                : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+            }`}
+          >
+            {ayah.number_in_surah}
+          </div>
+          <span className="text-xs font-semibold text-slate-400">
+            Ayat {ayah.number_in_surah}
+          </span>
+          {isCurrentPlaying && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-emerald-950 text-[10px] font-black animate-pulse">
+              <Volume2 className="w-3 h-3" /> Sedang Diputar
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {/* Play from this Ayah Continuously */}
+          <button
+            type="button"
+            onClick={() => onPlay(index)}
+            className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCurrentPlaying
+                ? 'bg-amber-400 text-emerald-950 shadow-md'
+                : isCurrentPaused
+                ? 'bg-emerald-100 text-emerald-900'
+                : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+            }`}
+            title="Putar ayat ini dan lanjutkan seterusnya"
+          >
+            {isCurrentPlaying ? (
+              <Pause className="w-3.5 h-3.5 fill-current" />
+            ) : (
+              <Play className="w-3.5 h-3.5 fill-current" />
+            )}
+            <span className="hidden sm:inline">
+              {isCurrentPlaying ? 'Jeda' : 'Putar'}
+            </span>
+          </button>
+
+          {/* Bookmark Button */}
+          <button
+            type="button"
+            onClick={() => onBookmark(surahNumber, surahName, ayah.number_in_surah)}
+            className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors cursor-pointer"
+            title="Tandai Terakhir Dibaca"
+          >
+            {isBookmarked ? (
+              <Check className="w-4 h-4 text-emerald-600 animate-bounce" />
+            ) : (
+              <BookmarkIcon className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Arabic Text */}
+      <div className="py-4 my-2">
+        <p
+          className={`font-arabic text-slate-900 ${arabicFontClass}`}
+          style={{ wordSpacing: '0.22em' }}
+        >
+          {renderTajweedText(ayah.arab, enableTajweed, (rule, word) => {
+            onWordClick(rule, word);
+          })}
+          <AyahEndMarker
+            number={ayah.number_in_surah}
+            size={arabicSize === 'huge' ? 'lg' : arabicSize === 'large' ? 'md' : 'sm'}
+          />
+        </p>
+      </div>
+
+      {/* Latin & Translation */}
+      <div className="pt-4 mt-4 border-t border-slate-100/80 space-y-1.5">
+        <p className="text-xs sm:text-sm text-emerald-800 font-medium italic leading-relaxed">
+          {ayah.latin}
+        </p>
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          {ayah.translation}
+        </p>
+      </div>
+    </div>
+  );
+});
 
 export const QuranReader: React.FC = () => {
   const { arabicSize, setArabicSize } = useSettings();
@@ -47,6 +181,7 @@ export const QuranReader: React.FC = () => {
   const [enableTajweed, setEnableTajweed] = useState<boolean>(true);
   const [isTajweedGuideOpen, setIsTajweedGuideOpen] = useState<boolean>(false);
   const [activeTajweed, setActiveTajweed] = useState<{ rule: TajweedRule; word: string } | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number>(35);
 
   // Load initial surah and juz list
   useEffect(() => {
@@ -62,14 +197,43 @@ export const QuranReader: React.FC = () => {
       .catch(() => setLoading(false));
   }, []);
 
+  // Progressive rendering: reset when surah changes
+  useEffect(() => {
+    setVisibleCount(35);
+  }, [selectedSurah?.number]);
+
+  // Ensure current playing ayah is always rendered
+  useEffect(() => {
+    if (
+      currentTrack?.surahNumber === selectedSurah?.number &&
+      currentTrack?.ayahNumber &&
+      currentTrack.ayahNumber > visibleCount - 5
+    ) {
+      setVisibleCount((prev) => Math.max(prev, (currentTrack.ayahNumber || 0) + 15));
+    }
+  }, [currentTrack?.ayahNumber, currentTrack?.surahNumber, selectedSurah?.number, visibleCount]);
+
+  // Window scroll listener for progressive loading
+  useEffect(() => {
+    if (!selectedSurah?.ayahs || visibleCount >= selectedSurah.ayahs.length) return;
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 900) {
+        setVisibleCount((prev) => Math.min(prev + 35, selectedSurah.ayahs?.length || 0));
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [selectedSurah, visibleCount]);
+
   // Open Surah view
   const openSurah = (surahNumber: number) => {
+    setVisibleCount(35);
     setReadingLoading(true);
     fetchApi<Surah>(`/quran/surah/${surahNumber}`)
       .then((data) => {
         setSelectedSurah(data);
         setReadingLoading(false);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'instant' });
       })
       .catch(() => setReadingLoading(false));
   };
@@ -348,119 +512,55 @@ export const QuranReader: React.FC = () => {
               Memuat ayat Al-Qur'an...
             </div>
           ) : (
-            selectedSurah.ayahs?.map((ayah, index) => {
-              const isCurrentPlaying =
-                currentTrack?.surahNumber === selectedSurah.number &&
-                currentTrack?.ayahNumber === ayah.number_in_surah &&
-                isPlaying;
+            <>
+              {selectedSurah.ayahs?.slice(0, visibleCount).map((ayah, index) => {
+                const isCurrentPlaying =
+                  currentTrack?.surahNumber === selectedSurah.number &&
+                  currentTrack?.ayahNumber === ayah.number_in_surah &&
+                  isPlaying;
 
-              const isCurrentPaused =
-                currentTrack?.surahNumber === selectedSurah.number &&
-                currentTrack?.ayahNumber === ayah.number_in_surah &&
-                !isPlaying;
+                const isCurrentPaused =
+                  currentTrack?.surahNumber === selectedSurah.number &&
+                  currentTrack?.ayahNumber === ayah.number_in_surah &&
+                  !isPlaying;
 
-              return (
-                <div
-                  key={ayah.number_in_surah}
-                  id={`ayah-${ayah.number_in_surah}`}
-                  className={`clay-card p-5 sm:p-6 transition-all duration-300 ${
-                    isCurrentPlaying
-                      ? 'ring-4 ring-amber-400 bg-amber-50/30 border-amber-400 shadow-xl shadow-amber-400/10'
-                      : isCurrentPaused
-                      ? 'ring-2 ring-emerald-300 bg-emerald-50/20'
-                      : 'bg-white'
-                  }`}
-                >
-                  {/* Ayah Header Strip */}
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-8 h-8 rounded-full font-extrabold text-xs flex items-center justify-center border shadow-sm transition-all ${
-                          isCurrentPlaying
-                            ? 'bg-amber-400 text-emerald-950 border-amber-500 scale-110'
-                            : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                        }`}
-                      >
-                        {ayah.number_in_surah}
-                      </div>
-                      <span className="text-xs font-semibold text-slate-400">
-                        Ayat {ayah.number_in_surah}
-                      </span>
-                      {isCurrentPlaying && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400 text-emerald-950 text-[10px] font-black animate-pulse">
-                          <Volume2 className="w-3 h-3" /> Sedang Diputar
-                        </span>
-                      )}
-                    </div>
+                return (
+                  <AyahCard
+                    key={ayah.number_in_surah}
+                    ayah={ayah}
+                    index={index}
+                    surahNumber={selectedSurah.number}
+                    surahName={selectedSurah.name}
+                    isCurrentPlaying={isCurrentPlaying}
+                    isCurrentPaused={isCurrentPaused}
+                    isBookmarked={bookmarkedAyah === ayah.number_in_surah}
+                    enableTajweed={enableTajweed}
+                    arabicFontClass={getArabicFontClass()}
+                    arabicSize={arabicSize}
+                    onPlay={(idx) => handlePlayFullSurah(selectedSurah, idx)}
+                    onBookmark={handleBookmark}
+                    onWordClick={(rule, word) => setActiveTajweed({ rule, word })}
+                  />
+                );
+              })}
 
-                    <div className="flex items-center gap-1">
-                      {/* Play from this Ayah Continuously */}
-                      <button
-                        onClick={() => handlePlayFullSurah(selectedSurah, index)}
-                        className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                          isCurrentPlaying
-                            ? 'bg-amber-400 text-emerald-950 shadow-md'
-                            : isCurrentPaused
-                            ? 'bg-emerald-100 text-emerald-900'
-                            : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-                        }`}
-                        title="Putar ayat ini dan lanjutkan seterusnya"
-                      >
-                        {isCurrentPlaying ? (
-                          <Pause className="w-3.5 h-3.5 fill-current" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                        )}
-                        <span className="hidden sm:inline">
-                          {isCurrentPlaying ? 'Jeda' : 'Putar'}
-                        </span>
-                      </button>
-
-                      {/* Bookmark Button */}
-                      <button
-                        onClick={() =>
-                          handleBookmark(selectedSurah.number, selectedSurah.name, ayah.number_in_surah)
-                        }
-                        className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-                        title="Tandai Terakhir Dibaca"
-                      >
-                        {bookmarkedAyah === ayah.number_in_surah ? (
-                          <Check className="w-4 h-4 text-emerald-600 animate-bounce" />
-                        ) : (
-                          <BookmarkIcon className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Arabic Text */}
-                  <div className="py-4 my-2">
-                    <p
-                      className={`font-arabic text-slate-900 ${getArabicFontClass()}`}
-                      style={{ wordSpacing: '0.22em' }}
-                    >
-                      {renderTajweedText(ayah.arab, enableTajweed, (rule, word) => {
-                        setActiveTajweed({ rule, word });
-                      })}
-                      <AyahEndMarker
-                        number={ayah.number_in_surah}
-                        size={arabicSize === 'huge' ? 'lg' : arabicSize === 'large' ? 'md' : 'sm'}
-                      />
-                    </p>
-                  </div>
-
-                  {/* Latin & Translation */}
-                  <div className="pt-4 mt-4 border-t border-slate-100/80 space-y-1.5">
-                    <p className="text-xs sm:text-sm text-emerald-800 font-medium italic leading-relaxed">
-                      {ayah.latin}
-                    </p>
-                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                      {ayah.translation}
-                    </p>
-                  </div>
+              {selectedSurah.ayahs && visibleCount < selectedSurah.ayahs.length && (
+                <div className="pt-4 pb-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setVisibleCount((prev) =>
+                        Math.min(prev + 35, selectedSurah.ayahs?.length || 0)
+                      )
+                    }
+                    className="px-6 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200 shadow-sm inline-flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                    Muat 35 Ayat Berikutnya (Tersisa {selectedSurah.ayahs.length - visibleCount} Ayat)
+                  </button>
                 </div>
-              );
-            })
+              )}
+            </>
           )}
         </div>
 

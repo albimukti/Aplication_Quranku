@@ -47,9 +47,22 @@ func InitDB(cfg *Config) *gorm.DB {
 		if err != nil {
 			log.Fatalf("[Database] Fatal: Failed to initialize fallback SQLite: %v", err)
 		}
-		log.Printf("[Database] SQLite storage initialized successfully at %s\n", sqlitePath)
+
+		// High-performance SQLite pragmas
+		DB.Exec("PRAGMA journal_mode = WAL;")
+		DB.Exec("PRAGMA synchronous = NORMAL;")
+		DB.Exec("PRAGMA cache_size = -64000;") // 64MB cache
+		DB.Exec("PRAGMA temp_store = MEMORY;")
+		DB.Exec("PRAGMA mmap_size = 268435456;") // 256MB memory map
+		log.Printf("[Database] SQLite storage initialized successfully with WAL mode & 64MB cache at %s\n", sqlitePath)
 	} else {
 		log.Println("[Database] Connected successfully to PostgreSQL (Vercel Storage)!")
+	}
+
+	// Connection Pool Optimization
+	if sqlDB, err := DB.DB(); err == nil {
+		sqlDB.SetMaxOpenConns(50)
+		sqlDB.SetMaxIdleConns(25)
 	}
 
 	return DB

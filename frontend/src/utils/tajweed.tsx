@@ -116,67 +116,68 @@ export const TAJWEED_RULES: Record<string, TajweedRule> = {
   },
 };
 
+// High-speed word cache to avoid re-running regex checks on repeated words
+const wordTajweedCache = new Map<string, { rule: TajweedRule | null; reason: string }>();
+
 /**
- * Detects tajweed category in an Arabic word token
+ * Detects tajweed category in an Arabic word token (with O(1) cache)
  */
 export function identifyWordTajweed(word: string): { rule: TajweedRule | null; reason: string } {
+  const cached = wordTajweedCache.get(word);
+  if (cached) return cached;
+
+  let result: { rule: TajweedRule | null; reason: string } = { rule: null, reason: '' };
+
   // 1. Mad (contains maddah wave ~ or \u0653)
   if (/[~ٓ\u0653]/.test(word)) {
-    return {
+    result = {
       rule: TAJWEED_RULES.mad,
       reason: 'Mad: Dibaca panjang 4 sampai 6 harakat',
     };
-  }
-
-  // 2. Iqlab: contains small high meem \u06E2 or nun + ba
-  if (/\u06E2|[\u0646]\u0652?[\s\u0640]*[\u0628]/.test(word)) {
-    return {
+  } else if (/\u06E2|[\u0646]\u0652?[\s\u0640]*[\u0628]/.test(word)) {
+    // 2. Iqlab: contains small high meem \u06E2 or nun + ba
+    result = {
       rule: TAJWEED_RULES.iqlab,
       reason: 'Iqlab: Suara N ditukar menjadi M (dengung 2 harakat)',
     };
-  }
-
-  // 3. Ghunnah: Nun or Mim with shaddah (نّ or مّ)
-  if (/[\u0646\u0645]\u0651/.test(word)) {
-    return {
+  } else if (/[\u0646\u0645]\u0651/.test(word)) {
+    // 3. Ghunnah: Nun or Mim with shaddah (نّ or مّ)
+    result = {
       rule: TAJWEED_RULES.ghunnah,
       reason: 'Ghunnah Musyaddadah: Nun/Mim bertasydid ditahan dengung 2-3 harakat',
     };
-  }
-
-  // 4. Qalqalah: sukun on qalqalah letters (ق ط ب ج د)
-  if (/[قطبجد]\u0652/.test(word)) {
-    return {
+  } else if (/[قطبجد]\u0652/.test(word)) {
+    // 4. Qalqalah: sukun on qalqalah letters (ق ط ب ج د)
+    result = {
       rule: TAJWEED_RULES.qalqalah,
       reason: 'Qalqalah: Pantulan huruf Qaf, Tha, Ba, Jim, Dal bersukun',
     };
-  }
-
-  // 5. Idgham: tanwin / nun sukun followed by ya, nun, mim, waw, lam, ra
-  if (/[\u064B\u064C\u064D\u0646]\u0652?[\s\u0640]*[ينمولر]/.test(word)) {
-    return {
+  } else if (/[\u064B\u064C\u064D\u0646]\u0652?[\s\u0640]*[ينمولر]/.test(word)) {
+    // 5. Idgham: tanwin / nun sukun followed by ya, nun, mim, waw, lam, ra
+    result = {
       rule: TAJWEED_RULES.idgham,
       reason: 'Idgham: Melebur bunyi huruf dengan dengung',
     };
-  }
-
-  // 6. Ikhfa: tanwin / nun sukun followed by 15 ikhfa letters
-  if (/[\u064B\u064C\u064D\u0646]\u0652?[\s\u0640]*[تثجدذزسشصضطظفقك]/.test(word)) {
-    return {
+  } else if (/[\u064B\u064C\u064D\u0646]\u0652?[\s\u0640]*[تثجدذزسشصضطظفقك]/.test(word)) {
+    // 6. Ikhfa: tanwin / nun sukun followed by 15 ikhfa letters
+    result = {
       rule: TAJWEED_RULES.ikhfa,
       reason: "Ikhfa' Haqiqi: Dibaca samar-samar berdengung 2 harakat",
     };
-  }
-
-  // 7. Idzhar: tanwin / nun sukun followed by throat letters
-  if (/[\u064B\u064C\u064D\u0646]\u0652?[\s\u0640]*[ءهعحغخ]/.test(word)) {
-    return {
+  } else if (/[\u064B\u064C\u064D\u0646]\u0652?[\s\u0640]*[ءهعحغخ]/.test(word)) {
+    // 7. Idzhar: tanwin / nun sukun followed by throat letters
+    result = {
       rule: TAJWEED_RULES.idzhar,
       reason: 'Idzhar Halqi: Dibaca jelas tanpa dengung',
     };
   }
 
-  return { rule: null, reason: '' };
+  // Cap cache size to avoid unbounded memory
+  if (wordTajweedCache.size > 2000) {
+    wordTajweedCache.clear();
+  }
+  wordTajweedCache.set(word, result);
+  return result;
 }
 
 /**

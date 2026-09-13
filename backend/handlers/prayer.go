@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,11 +11,26 @@ import (
 	"quranku-backend/services"
 )
 
+var (
+	cityMapOnce sync.Once
+	cityMap     = make(map[string]data.City)
+)
+
+func initCityMap() {
+	cityMapOnce.Do(func() {
+		for _, c := range data.IndonesianCities {
+			cityMap[c.ID] = c
+		}
+	})
+}
+
 func GetIndonesianCities(c *fiber.Ctx) error {
 	return c.JSON(data.IndonesianCities)
 }
 
 func GetPrayerTimes(c *fiber.Ctx) error {
+	initCityMap()
+
 	cityID := c.Query("city", "jkt")
 	dateStr := c.Query("date")
 	latStr := c.Query("lat")
@@ -48,26 +64,20 @@ func GetPrayerTimes(c *fiber.Ctx) error {
 			tzName = "WIB"
 		}
 	} else {
-		// Look up city by ID
-		found := false
-		for _, city := range data.IndonesianCities {
-			if city.ID == cityID {
-				lat = city.Latitude
-				lng = city.Longitude
-				cityName = city.Name + ", " + city.Province
-				tzName = city.Timezone
-				if tzName == "WITA" {
-					tzOffset = 8.0
-				} else if tzName == "WIT" {
-					tzOffset = 9.0
-				} else {
-					tzOffset = 7.0
-				}
-				found = true
-				break
+		// O(1) Look up city by ID from map
+		if city, ok := cityMap[cityID]; ok {
+			lat = city.Latitude
+			lng = city.Longitude
+			cityName = city.Name + ", " + city.Province
+			tzName = city.Timezone
+			if tzName == "WITA" {
+				tzOffset = 8.0
+			} else if tzName == "WIT" {
+				tzOffset = 9.0
+			} else {
+				tzOffset = 7.0
 			}
-		}
-		if !found {
+		} else {
 			// default to Jakarta
 			lat = -6.2088
 			lng = 106.8456

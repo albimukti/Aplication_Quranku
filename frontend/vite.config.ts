@@ -12,5 +12,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          leaflet: ['leaflet'],
+          lucide: ['lucide-react'],
+          confetti: ['canvas-confetti'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
 })
 

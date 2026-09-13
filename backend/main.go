@@ -4,7 +4,9 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/etag"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 
 	"quranku-backend/config"
@@ -54,6 +56,14 @@ func main() {
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS",
 		AllowCredentials: false,
 	}))
+
+	// Response Compression (Gzip & Deflate) - reduces payload size by ~75-85%
+	app.Use(compress.New(compress.Config{
+		Level: compress.LevelDefault,
+	}))
+
+	// Lightweight HTTP ETag for conditional caching
+	app.Use(etag.New())
 
 	// 7. Setup API Routes
 	routes.SetupRoutes(app)

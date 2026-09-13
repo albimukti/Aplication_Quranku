@@ -1,12 +1,21 @@
 package routes
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 
 	"quranku-backend/handlers"
 	"quranku-backend/middleware"
 	"quranku-backend/models"
 )
+
+func cacheControl(durationSeconds int) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		c.Set("Cache-Control", fmt.Sprintf("public, max-age=%d, stale-while-revalidate=3600", durationSeconds))
+		return c.Next()
+	}
+}
 
 func SetupRoutes(app *fiber.App) {
 	// Root service check
@@ -46,29 +55,29 @@ func SetupRoutes(app *fiber.App) {
 	auth.Post("/register", handlers.Register)
 	auth.Get("/me", middleware.AuthMiddleware(""), handlers.GetMe)
 
-	// Quran routes
+	// Quran routes with aggressive caching
 	quran := api.Group("/quran")
-	quran.Get("/surahs", handlers.GetSurahs)
-	quran.Get("/surah/:id", handlers.GetSurahDetail)
-	quran.Get("/juz", handlers.GetJuzList)
-	quran.Get("/juz-amma", handlers.GetJuzAmma)
+	quran.Get("/surahs", cacheControl(86400), handlers.GetSurahs)
+	quran.Get("/surah/:id", cacheControl(86400), handlers.GetSurahDetail)
+	quran.Get("/juz", cacheControl(86400), handlers.GetJuzList)
+	quran.Get("/juz-amma", cacheControl(86400), handlers.GetJuzAmma)
 
 	// Iqro routes
 	iqro := api.Group("/iqro")
-	iqro.Get("/levels", handlers.GetIqroLevels)
-	iqro.Get("/level/:level", handlers.GetIqroLevelDetail)
+	iqro.Get("/levels", cacheControl(86400), handlers.GetIqroLevels)
+	iqro.Get("/level/:level", cacheControl(86400), handlers.GetIqroLevelDetail)
 
 	// Prayer times & Qibla
 	prayer := api.Group("/prayer")
-	prayer.Get("/cities", handlers.GetIndonesianCities)
-	prayer.Get("/times", handlers.GetPrayerTimes)
-	prayer.Get("/qibla", handlers.GetQiblaDirection)
+	prayer.Get("/cities", cacheControl(86400), handlers.GetIndonesianCities)
+	prayer.Get("/times", cacheControl(3600), handlers.GetPrayerTimes)
+	prayer.Get("/qibla", cacheControl(86400), handlers.GetQiblaDirection)
 
 	// Doa & Dzikir
-	api.Get("/doas", handlers.GetDoas)
+	api.Get("/doas", cacheControl(86400), handlers.GetDoas)
 
 	// Masjid terdekat
-	api.Get("/masjid/nearby", handlers.GetNearbyMosques)
+	api.Get("/masjid/nearby", cacheControl(1800), handlers.GetNearbyMosques)
 
 	// Zakat, Infaq & Sedekah
 	donation := api.Group("/donation")
