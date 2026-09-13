@@ -15,10 +15,16 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          leaflet: ['leaflet'],
-          lucide: ['lucide-react'],
-          confetti: ['canvas-confetti'],
+        manualChunks(id) {
+          if (id.includes('node_modules/leaflet')) {
+            return 'leaflet'
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'lucide'
+          }
+          if (id.includes('node_modules/canvas-confetti')) {
+            return 'confetti'
+          }
         },
       },
     },

@@ -70,11 +70,12 @@ func GetPrayerTimes(c *fiber.Ctx) error {
 			lng = city.Longitude
 			cityName = city.Name + ", " + city.Province
 			tzName = city.Timezone
-			if tzName == "WITA" {
+			switch tzName {
+			case "WITA":
 				tzOffset = 8.0
-			} else if tzName == "WIT" {
+			case "WIT":
 				tzOffset = 9.0
-			} else {
+			default:
 				tzOffset = 7.0
 			}
 		} else {
